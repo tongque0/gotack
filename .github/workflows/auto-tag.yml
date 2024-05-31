@@ -1,8 +1,6 @@
-name: Auto Tag
+name: Conditional Auto Tag
 
 on:
-  pull_request_target:
-    types: [opened, synchronize]
   push:
     branches:
       - main
@@ -17,8 +15,24 @@ jobs:
       with:
         token: ${{ secrets.ACTIONS_PAT }}
 
+    - name: Get commit message
+      id: get-commit-message
+      run: |
+        COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+        echo "commit_message=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+    - name: Check for tag keyword in commit message
+      id: check-tag-keyword
+      run: |
+        if echo "${{ env.commit_message }}" | grep -iq "#tag"; then
+          echo "contains_tag_keyword=true" >> $GITHUB_ENV
+        else
+          echo "contains_tag_keyword=false" >> $GITHUB_ENV
+        fi
+
     - name: Get current tag
       id: current-tag
+      if: env.contains_tag_keyword == 'true'
       run: |
         git fetch --tags
         TAG=$(git tag --sort=-v:refname | head -n 1)
@@ -26,6 +40,7 @@ jobs:
 
     - name: Increment version
       id: increment
+      if: env.contains_tag_keyword == 'true'
       run: |
         if [ -z "${{ env.tag }}" ]; then
           NEW_TAG="v0.0.1"
@@ -38,11 +53,8 @@ jobs:
         fi
         echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
 
-    - name: Print PAT for debugging
-      run: |
-        echo "ACTIONS_PAT starts with: ${ACTIONS_PAT:0:4}"
-
     - name: Create new tag and latest tag
+      if: env.contains_tag_keyword == 'true'
       env:
         ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
       run: |
