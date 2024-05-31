@@ -36,6 +36,10 @@ jobs:
         fi
         echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
 
+    - name: Print PAT for debugging
+      run: |
+        echo "ACTIONS_PAT starts with: ${ACTIONS_PAT:0:4}"
+
     - name: Create new tag and latest tag
       env:
         ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
