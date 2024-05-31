@@ -11,12 +11,11 @@ jobs:
   tag:
     runs-on: ubuntu-latest
 
-    env:
-      ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.ACTIONS_PAT }}
 
     - name: Get current tag
       id: current-tag
@@ -44,10 +43,13 @@ jobs:
         echo "ACTIONS_PAT starts with: ${ACTIONS_PAT:0:4}"
 
     - name: Create new tag and latest tag
+      env:
+        ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
       run: |
         NEW_TAG=${{ env.new_tag }}
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
         git tag $NEW_TAG
         git tag -f latest
-        git push https://${{ secrets.ACTIONS_PAT }}@github.com/${{ github.repository }} --tags
+        git push https://${{ secrets.ACTIONS_PAT }}@github.com/${{ github.repository }} $NEW_TAG
+        git push https://${{ secrets.ACTIONS_PAT }}@github.com/${{ github.repository }} -f latest
