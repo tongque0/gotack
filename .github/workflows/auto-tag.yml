@@ -1,0 +1,47 @@
+name: Auto Tag
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+  push:
+    branches:
+      - main
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Get current tag
+      id: current-tag
+      run: |
+        git fetch --tags
+        TAG=$(git tag --sort=-v:refname | head -n 1)
+        echo "::set-output name=tag::$TAG"
+
+    - name: Increment version
+      id: increment
+      run: |
+        if [ -z "${{ steps.current-tag.outputs.tag }}" ]; then
+          NEW_TAG="v0.0.1"
+        else
+          TAG=${{ steps.current-tag.outputs.tag }}
+          echo "Current tag: $TAG"
+          IFS='.' read -r -a VERSION_PARTS <<< "${TAG#v}"
+          VERSION_PARTS[2]=$((VERSION_PARTS[2] + 1))
+          NEW_TAG="v${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.${VERSION_PARTS[2]}"
+        fi
+        echo "::set-output name=new_tag::$NEW_TAG"
+
+    - name: Create new tag and latest tag
+      run: |
+        NEW_TAG=${{ steps.increment.outputs.new_tag }}
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+        git tag $NEW_TAG
+        git tag -f latest
+        git push origin $NEW_TAG
+        git push origin -f latest
