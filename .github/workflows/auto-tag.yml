@@ -20,25 +20,25 @@ jobs:
       run: |
         git fetch --tags
         TAG=$(git tag --sort=-v:refname | head -n 1)
-        echo "::set-output name=tag::$TAG"
+        echo "tag=$TAG" >> $GITHUB_ENV
 
     - name: Increment version
       id: increment
       run: |
-        if [ -z "${{ steps.current-tag.outputs.tag }}" ]; then
+        if [ -z "${{ env.tag }}" ]; then
           NEW_TAG="v0.0.1"
         else
-          TAG=${{ steps.current-tag.outputs.tag }}
+          TAG=${{ env.tag }}
           echo "Current tag: $TAG"
           IFS='.' read -r -a VERSION_PARTS <<< "${TAG#v}"
           VERSION_PARTS[2]=$((VERSION_PARTS[2] + 1))
           NEW_TAG="v${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.${VERSION_PARTS[2]}"
         fi
-        echo "::set-output name=new_tag::$NEW_TAG"
+        echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
 
     - name: Create new tag and latest tag
       run: |
-        NEW_TAG=${{ steps.increment.outputs.new_tag }}
+        NEW_TAG=${{ env.new_tag }}
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
         git tag $NEW_TAG
