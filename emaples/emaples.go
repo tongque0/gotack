@@ -1,4 +1,4 @@
-package emaples
+package main
 
 import (
 	"fmt"
