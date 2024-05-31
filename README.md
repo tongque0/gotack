@@ -14,7 +14,9 @@
 ### 安装
 
 要开始使用 `gotack`，请确保你已安装 Go 环境（版本 1.13 或更高），然后执行以下命令：
-go get github.com/yourusername/gotack
+```bash
+go get github.com/tongque0/gotack
+```
 
 ### 示例代码
 
@@ -24,7 +26,7 @@ go get github.com/yourusername/gotack
 package main
 
 import (
-    "github.com/yourusername/gotack"
+    "github.com/tongque0/gotack"
     "fmt"
 )
 
