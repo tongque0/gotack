@@ -96,13 +96,17 @@ func (e *Evaluator) GetBestMove() []Move {
 		fmt.Println("+-----------------+----------------------------------+")
 		fmt.Printf("| %-15s | %-32f |\n", "Best Eval Value", value)
 		fmt.Println("+-----------------+----------------------------------+")
-		// 打印最多三个最佳移动
-		displayMoves := bestMoves
-		if len(bestMoves) > 3 {
-			displayMoves = bestMoves[:3]
+		fmt.Printf("| Best Moves     | ")
+		for i, move := range bestMoves {
+			if i > 2 { // 仅显示前三个
+				break
+			}
+			if i > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Print(move) // 直接调用 move.String()，由于 fmt.Print 调用 String()
 		}
-		fmt.Printf("| %-15s | %-32v |\n", "Best Moves", displayMoves)
-		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Println(" |\n+-----------------+----------------------------------+")
 	}
 	return bestMoves
 }

@@ -36,4 +36,6 @@ type Board interface {
 
 // Move 是一个表示棋盘上一步棋动作的接口。
 type Move interface {
+	// String 返回一个表示棋盘上一步棋动作的字符串。
+	String() string
 }
