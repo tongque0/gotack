@@ -41,9 +41,10 @@ type Evaluator struct {
 //	    return 0.0 // 返回评估值
 //	}
 //	evaluator := NewEvaluator(AlphaBeta, 5, true, evalFunc)
-func NewEvaluator(treeType GameTreeType, depth int, isMaxPlayer bool, isDetail bool, evalFunc func(board Board, isMaxPlayer bool, opts ...interface{}) float64) *Evaluator {
+func NewEvaluator(treeType GameTreeType, board Board, depth int, isMaxPlayer bool, isDetail bool, evalFunc func(board Board, isMaxPlayer bool, opts ...interface{}) float64) *Evaluator {
 	return &Evaluator{
 		TreeType:     treeType,
+		Board:        board,
 		Depth:        depth,
 		IsMaxPlayer:  isMaxPlayer,
 		EvaluateFunc: evalFunc,
