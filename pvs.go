@@ -4,7 +4,8 @@ import "math"
 
 func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool, opts ...interface{}) (float64, []Move) {
 	if depth == 0 || e.Board.IsGameOver() {
-		return e.EvaluateFunc(e.Board, isMaximizingPlayer, opts...), nil
+		newOpts := append([]interface{}{depth}, opts...)
+		return e.EvaluateFunc(e.Board, isMaximizingPlayer, newOpts...), nil
 	}
 
 	var bestMoves []Move
