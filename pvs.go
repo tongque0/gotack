@@ -2,67 +2,77 @@ package gotack
 
 import "math"
 
-func (e *Evaluator) pvs(board Board, depth int, alpha, beta float64, isMaximizingPlayer bool, opts ...interface{}) (float64, Move) {
-	if depth == 0 || board.IsGameOver() {
-		return e.EvaluateFunc(board, isMaximizingPlayer, opts...), nil
+func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool, opts ...interface{}) (float64, []Move) {
+	if depth == 0 || e.Board.IsGameOver() {
+		return e.EvaluateFunc(e.Board, isMaximizingPlayer, opts...), nil
 	}
 
-	var bestMove Move
+	var bestMoves []Move
+	var eval float64
+	firstMove := true
+
+	moves := e.Board.GetAllMoves(isMaximizingPlayer)
 	if isMaximizingPlayer {
 		maxEval := math.Inf(-1)
-		firstMove := true
-		for _, move := range board.GetAllMoves(isMaximizingPlayer) {
-			board.Move(move)
-			var eval float64
+		for _, move := range moves {
+			e.Board.Move(move)
 			if firstMove {
-				eval, _ = e.pvs(board, depth-1, alpha, beta, false, opts...)
+				eval, _ = e.pvs(depth-1, alpha, beta, false, opts...)
 				firstMove = false
 			} else {
-				// 试探性地用一个更小的窗口进行搜索
-				eval, _ = e.pvs(board, depth-1, alpha, alpha+1, false, opts...)
-				if eval > alpha && eval < beta { // 如果落在窗口之内，进行完整的重新搜索
-					eval, _ = e.pvs(board, depth-1, alpha, beta, false, opts...)
+				// Use a null window search initially
+				eval, _ = e.pvs(depth-1, alpha, alpha+1, false, opts...)
+				// If the result is promising but not proven, re-search
+				if eval > alpha && eval < beta {
+					eval, _ = e.pvs(depth-1, alpha, beta, false, opts...)
 				}
 			}
-			board.UndoMove(move)
+			e.Board.UndoMove(move)
 
 			if eval > maxEval {
 				maxEval = eval
-				bestMove = move
+				bestMoves = []Move{move}
+			} else if eval == maxEval {
+				bestMoves = append(bestMoves, move)
 			}
 			alpha = math.Max(alpha, eval)
 			if beta <= alpha {
 				break
 			}
 		}
-		return maxEval, bestMove
+		if depth == e.Depth {
+			e.BestMoves = bestMoves // Only update the BestMoves at the root call
+		}
+		return maxEval, bestMoves
 	} else {
 		minEval := math.Inf(1)
-		firstMove := true
-		for _, move := range board.GetAllMoves(isMaximizingPlayer) {
-			board.Move(move)
-			var eval float64
+		for _, move := range moves {
+			e.Board.Move(move)
 			if firstMove {
-				eval, _ = e.pvs(board, depth-1, alpha, beta, true, opts...)
+				eval, _ = e.pvs(depth-1, alpha, beta, true, opts...)
 				firstMove = false
 			} else {
-				// 试探性地用一个更小的窗口进行搜索
-				eval, _ = e.pvs(board, depth-1, beta-1, beta, true, opts...)
-				if eval < beta && eval > alpha { // 如果落在窗口之内，进行完整的重新搜索
-					eval, _ = e.pvs(board, depth-1, alpha, beta, true, opts...)
+				eval, _ = e.pvs(depth-1, beta-1, beta, true, opts...)
+				if eval < beta && eval > alpha {
+					eval, _ = e.pvs(depth-1, alpha, beta, true, opts...)
 				}
 			}
-			board.UndoMove(move)
+			e.Board.UndoMove(move)
 
 			if eval < minEval {
 				minEval = eval
-				bestMove = move
+				bestMoves = []Move{move}
+			} else if eval == minEval {
+				bestMoves = append(bestMoves, move)
 			}
 			beta = math.Min(beta, eval)
-			if beta <= alpha {
+			if alpha >= beta {
 				break
 			}
 		}
-		return minEval, bestMove
+		if depth == e.Depth {
+			e.BestMoves = bestMoves // Only update the BestMoves at the root call
+		}
+		return minEval, bestMoves
 	}
 }
