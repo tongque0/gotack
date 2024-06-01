@@ -24,7 +24,7 @@ func main() {
 	for sc.Scan() {
 		line = sc.Text()
 		if line == "name?" {
-			fmt.Println("name GoTack-Amazon")
+			fmt.Println("name Tack-Amazon")
 		} else if line == "quit" {
 			os.Exit(0)
 		} else if strings.HasPrefix(line, "new") {
@@ -59,12 +59,11 @@ func runSearch() {
 	if color == 2 {
 		IsMaxPlayer = false
 	}
-	if step <= 12 {
+	if step < 12 {
 		e = gotack.NewEvaluator(gotack.AlphaBeta, 2, IsMaxPlayer, func(board gotack.Board, isMaxPlayer bool, opts ...interface{}) float64 {
 			return amazon.EvaluateFunc(board.(*amazon.AmazonBoard), isMaxPlayer, step)
 		})
-	}
-	if step > 12 {
+	} else {
 		e = gotack.NewEvaluator(gotack.AlphaBeta, 4, IsMaxPlayer, func(board gotack.Board, isMaxPlayer bool, opts ...interface{}) float64 {
 			return amazon.EvaluateFunc(board.(*amazon.AmazonBoard), isMaxPlayer, step)
 		})
