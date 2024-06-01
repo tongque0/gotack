@@ -34,10 +34,6 @@ type Evaluator struct {
 //   }
 //   evaluator := NewEvaluator(AlphaBeta, 5, true, evalFunc)
 func NewEvaluator(treeType GameTreeType, depth int, isMaxPlayer bool, evalFunc func(board Board, isMaxPlayer bool, opts ...interface{}) float64) *Evaluator {
-	if treeType != AlphaBeta {
-		fmt.Println("Unsupported tree type")
-		return nil
-	}
 	return &Evaluator{
 		TreeType:     treeType,
 		Depth:        depth,
