@@ -88,16 +88,21 @@ func (e *Evaluator) GetBestMove() []Move {
 		return []Move{}
 	}
 	if e.IsDetail {
-		// 用表格形式格式化输出详细信息
-		fmt.Println("┌─────────────────┬──────────────────────────────────┐")
-		fmt.Printf("│ %-15s │ %-32v │\n", "算法", e.TreeType)
-		fmt.Println("├─────────────────┼──────────────────────────────────┤")
-		fmt.Printf("│ %-15s │ %-32d │\n", "深度", e.Depth)
-		fmt.Println("├─────────────────┼──────────────────────────────────┤")
-		fmt.Printf("│ %-15s │ %-32f │\n", "最佳评估值", value)
-		fmt.Println("├─────────────────┼──────────────────────────────────┤")
-		fmt.Printf("│ %-15s │ %-32v │\n", "最佳移动", bestMoves)
-		fmt.Println("└─────────────────┴──────────────────────────────────┘")
+		// 使用基本的 ASCII 字符格式化输出详细信息
+		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Printf("| %-15s | %-32v |\n", "Algorithm", e.TreeType)
+		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Printf("| %-15s | %-32d |\n", "Depth", e.Depth)
+		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Printf("| %-15s | %-32f |\n", "Best Eval Value", value)
+		fmt.Println("+-----------------+----------------------------------+")
+		// 打印最多三个最佳移动
+		displayMoves := bestMoves
+		if len(bestMoves) > 3 {
+			displayMoves = bestMoves[:3]
+		}
+		fmt.Printf("| %-15s | %-32v |\n", "Best Moves", displayMoves)
+		fmt.Println("+-----------------+----------------------------------+")
 	}
 	return bestMoves
 }
