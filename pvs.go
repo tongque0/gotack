@@ -2,10 +2,10 @@ package gotack
 
 import "math"
 
-func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool, opts ...interface{}) (float64, []Move) {
+func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool, opts *EvalOptions) (float64, []Move) {
 	if depth == 0 || e.Board.IsGameOver() {
-		newOpts := append([]interface{}{depth}, opts...)
-		return e.EvaluateFunc(e.Board, isMaximizingPlayer, newOpts...), nil
+		opts.Extra["depth"] = e.Depth - depth
+		return e.EvaluateFunc(opts), nil
 	}
 
 	var bestMoves []Move
@@ -18,14 +18,14 @@ func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool,
 		for _, move := range moves {
 			e.Board.Move(move)
 			if firstMove {
-				eval, _ = e.pvs(depth-1, alpha, beta, false, opts...)
+				eval, _ = e.pvs(depth-1, alpha, beta, false, opts)
 				firstMove = false
 			} else {
 				// Use a null window search initially
-				eval, _ = e.pvs(depth-1, alpha, alpha+1, false, opts...)
+				eval, _ = e.pvs(depth-1, alpha, alpha+1, false, opts)
 				// If the result is promising but not proven, re-search
 				if eval > alpha && eval < beta {
-					eval, _ = e.pvs(depth-1, alpha, beta, false, opts...)
+					eval, _ = e.pvs(depth-1, alpha, beta, false, opts)
 				}
 			}
 			e.Board.UndoMove(move)
@@ -50,12 +50,12 @@ func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool,
 		for _, move := range moves {
 			e.Board.Move(move)
 			if firstMove {
-				eval, _ = e.pvs(depth-1, alpha, beta, true, opts...)
+				eval, _ = e.pvs(depth-1, alpha, beta, true, opts)
 				firstMove = false
 			} else {
-				eval, _ = e.pvs(depth-1, beta-1, beta, true, opts...)
+				eval, _ = e.pvs(depth-1, beta-1, beta, true, opts)
 				if eval < beta && eval > alpha {
-					eval, _ = e.pvs(depth-1, alpha, beta, true, opts...)
+					eval, _ = e.pvs(depth-1, alpha, beta, true, opts)
 				}
 			}
 			e.Board.UndoMove(move)

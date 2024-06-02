@@ -15,40 +15,44 @@ const (
 
 type Evaluator struct {
 	TreeType     GameTreeType
-	Depth        int
-	IsMaxPlayer  bool
-	EvaluateFunc func(board Board, isMaxPlayer bool, opts ...interface{}) float64
+	EvaluateFunc func(opts *EvalOptions) float64
+	EvalOptions  *EvalOptions
 	Board        Board
+	Depth        int
 	BestMoves    []Move
-	IsDetail     bool
 }
 
 // NewEvaluator 创建并初始化一个 Evaluator 对象。
 // 此函数接收以下参数：
-//   - treeType: 博弈树的类型。当前只支持 AlphaBeta 类型。
-//   - depth: 搜索深度，表示算法需要搜索的层次。
-//   - isMaxPlayer: 表示调用者是否为最大化玩家,先手通常为true。
-//   - evalFunc: 一个评估函数，用于评估棋盘状态，返回一个表示局面评估值的浮点数。
-//     此函数接收棋盘状态和玩家类型，可以接受额外的可选参数。
+//   - treeType: 博弈树的类型。当前支持 AlphaBeta 和 PVS 类型。
+//   - opts: EvalOptions 结构，包含用于评估的配置选项，如棋盘状态、搜索深度等。
+//   - evalFunc: 评估函数，它接受一个 EvalOptions 指针并返回一个表示局面评估值的浮点数。
+//     此函数用于根据 EvalOptions 中的配置来评估棋盘状态。
 //
 // 返回值：
-// - 返回一个指向 Evaluator 的指针。如果不支持指定的博弈树类型，则返回 nil。
+// - 返回一个指向 Evaluator 的指针。如果不支持指定的博弈树类型，或其他配置错误，则返回 nil。
 //
 // 示例用法：
 //
-//	evalFunc := func(board Board, isMaxPlayer bool, opts ...interface{}) float64 {
-//	    // 实现具体的评估逻辑
-//	    return 0.0 // 返回评估值
+//	evalFunc := func(opts *EvalOptions) float64 {
+//	    // 实现具体的评估逻辑，可能使用 opts.Board 和 opts.Depth
+//	    return 0.0 // 示意返回一个评估值
 //	}
-//	evaluator := NewEvaluator(AlphaBeta, 5, true, evalFunc)
-func NewEvaluator(treeType GameTreeType, board Board, depth int, isMaxPlayer bool, isDetail bool, evalFunc func(board Board, isMaxPlayer bool, opts ...interface{}) float64) *Evaluator {
+//	opts := NewEvaluatorOptions(WithDepth(5), WithBoard(someBoard), WithIsMaxPlayer(true))
+//	evaluator := NewEvaluator(AlphaBeta, opts, evalFunc)
+//
+// 注意：评估函数和 EvalOptions 应当正确配合，确保所有必要的配置都被设置。
+func NewEvaluator(treeType GameTreeType, opts *EvalOptions, evalFunc func(opts *EvalOptions) float64) *Evaluator {
+	if treeType != AlphaBeta && treeType != PVS {
+		fmt.Println("Unsupported game tree type.")
+		return nil
+	}
 	return &Evaluator{
 		TreeType:     treeType,
-		Board:        board,
-		Depth:        depth,
-		IsMaxPlayer:  isMaxPlayer,
+		Depth:        opts.Depth,
+		Board:        opts.Board,
 		EvaluateFunc: evalFunc,
-		IsDetail:     isDetail,
+		EvalOptions:  opts,
 	}
 }
 
@@ -80,23 +84,30 @@ func (e *Evaluator) GetBestMove() []Move {
 	var value float64
 	switch e.TreeType {
 	case AlphaBeta:
-		value, bestMoves = e.alphaBeta(e.Depth, -math.MaxFloat64, math.MaxFloat64, e.IsMaxPlayer)
+		value, bestMoves = e.alphaBeta(e.EvalOptions.Depth, -math.MaxFloat64, math.MaxFloat64, e.EvalOptions.IsMaxPlayer, e.EvalOptions)
 	case PVS:
-		value, bestMoves = e.pvs(e.Depth, -math.MaxFloat64, math.MaxFloat64, e.IsMaxPlayer)
+		value, bestMoves = e.pvs(e.EvalOptions.Depth, -math.MaxFloat64, math.MaxFloat64, e.EvalOptions.IsMaxPlayer, e.EvalOptions)
 	default:
 		fmt.Println("Unsupported tree type")
 		return []Move{}
 	}
-	if e.IsDetail {
+	if e.EvalOptions.IsDetail {
 		// 使用基本的 ASCII 字符格式化输出详细信息
 		fmt.Println("+-----------------+----------------------------------+")
 		fmt.Printf("| %-15s | %-32v |\n", "Algorithm", e.TreeType)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32d |\n", "Depth", e.Depth)
+		fmt.Printf("| %-15s | %-32d |\n", "Depth", e.EvalOptions.Depth)
+		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Printf("| %-15s | %-32d |\n", "Step", e.EvalOptions.Step)
+		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Printf("| %-15s | %-32v |\n", "IsMaxPlayer", e.EvalOptions.IsMaxPlayer)
+		fmt.Println("+-----------------+----------------------------------+")
+		fmt.Printf("| %-15s | %-32v |\n", "IsDetail", e.EvalOptions.IsDetail)
 		fmt.Println("+-----------------+----------------------------------+")
 		fmt.Printf("| %-15s | %-32f |\n", "Best Eval Value", value)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| Best Moves     | ")
+		fmt.Print("| Best Moves     | ")
+
 		for i, move := range bestMoves {
 			if i > 2 { // 仅显示前三个
 				break
@@ -104,9 +115,21 @@ func (e *Evaluator) GetBestMove() []Move {
 			if i > 0 {
 				fmt.Print(", ")
 			}
-			fmt.Print(move) // 直接调用 move.String()，由于 fmt.Print 调用 String()
+			fmt.Print(move) // 假设 Move 类型有 String() 方法实现
 		}
-		fmt.Println(" |\n+-----------------+----------------------------------+")
+		fmt.Println(" |")
+		fmt.Println("+-----------------+----------------------------------+")
+
+		// 打印 Extra 映射中的额外信息
+		if len(e.EvalOptions.Extra) > 0 {
+			fmt.Println("+-----------------+----------------------------------+")
+			fmt.Println("| Extra Info      | Details                          |")
+			fmt.Println("+-----------------+----------------------------------+")
+			for key, value := range e.EvalOptions.Extra {
+				fmt.Printf("| %-15s | %-32v |\n", key, value)
+			}
+			fmt.Println("+-----------------+----------------------------------+")
+		}
 	}
 	return bestMoves
 }

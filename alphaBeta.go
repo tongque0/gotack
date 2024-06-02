@@ -2,10 +2,10 @@ package gotack
 
 import "math"
 
-func (e *Evaluator) alphaBeta(depth int, alpha, beta float64, isMaximizingPlayer bool, opts ...interface{}) (float64, []Move) {
+func (e *Evaluator) alphaBeta(depth int, alpha, beta float64, isMaximizingPlayer bool, opts *EvalOptions) (float64, []Move) {
 	if depth == 0 || e.Board.IsGameOver() {
-		newOpts := append([]interface{}{depth}, opts...)
-		return e.EvaluateFunc(e.Board, isMaximizingPlayer, newOpts...), nil
+		opts.Extra["depth"] = e.Depth - depth
+		return e.EvaluateFunc(opts), nil
 	}
 
 	var bestMoves []Move
@@ -14,7 +14,7 @@ func (e *Evaluator) alphaBeta(depth int, alpha, beta float64, isMaximizingPlayer
 		maxEval := math.Inf(-1)
 		for _, move := range e.Board.GetAllMoves(isMaximizingPlayer) {
 			e.Board.Move(move)
-			eval, _ = e.alphaBeta(depth-1, alpha, beta, false, opts...)
+			eval, _ = e.alphaBeta(depth-1, alpha, beta, false, opts)
 			e.Board.UndoMove(move)
 
 			if eval > maxEval {
@@ -36,7 +36,7 @@ func (e *Evaluator) alphaBeta(depth int, alpha, beta float64, isMaximizingPlayer
 		minEval := math.Inf(1)
 		for _, move := range e.Board.GetAllMoves(isMaximizingPlayer) {
 			e.Board.Move(move)
-			eval, _ = e.alphaBeta(depth-1, alpha, beta, true, opts...)
+			eval, _ = e.alphaBeta(depth-1, alpha, beta, true, opts)
 			e.Board.UndoMove(move)
 
 			if eval < minEval {
