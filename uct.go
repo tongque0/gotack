@@ -263,5 +263,5 @@ func (e *Evaluator) extractMoves(root, bestMove *Node) []Move {
 }
 
 func (e *Evaluator) evaluateGameState(state Board) float64 {
-	return state.EvaluateFunc()
+	return state.EvaluateFunc(*e.EvalOptions)
 }

@@ -27,7 +27,7 @@ type Board interface {
 	//   - bool: 若游戏结束返回true，否则返回false。
 	IsGameOver() bool
 
-	EvaluateFunc() float64
+	EvaluateFunc(opts EvalOptions) float64
 	// Hash 生成棋盘状态的哈希值。
 	// 返回值:
 	//   - uint64: 棋盘状态的哈希值。
