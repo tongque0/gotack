@@ -159,8 +159,8 @@ func (e *Evaluator) expandNode(node *Node, initialExpand int, expandStep int, to
 		// 计算每个未尝试过的动作的估值
 		evaluateMove := func(move Move) float64 {
 			newState := node.State.Clone()
-			(*newState).Move(move)
-			return e.evaluateGameState(*newState)
+			newState.Move(move)
+			return e.evaluateGameState(newState)
 		}
 
 		moveEvaluations := make([]struct {
@@ -216,9 +216,9 @@ func (e *Evaluator) expandNode(node *Node, initialExpand int, expandStep int, to
 	for i := node.ExpandedCount; i < end; i++ {
 		move := node.UntriedMoves[i]
 		newState := node.State.Clone()
-		(*newState).Move(move)
+		newState.Move(move)
 		childNode := &Node{
-			State:       *newState,
+			State:       newState,
 			Parent:      node,
 			IsMaxPlayer: !node.IsMaxPlayer,
 			Move:        move,
@@ -232,16 +232,16 @@ func (e *Evaluator) expandNode(node *Node, initialExpand int, expandStep int, to
 func (e *Evaluator) simulate(node *Node) float64 {
 	currentState := node.State.Clone()
 	isMaxPlayer := node.IsMaxPlayer
-	for !(*currentState).IsGameOver() {
-		moves := (*currentState).GetAllMoves(isMaxPlayer)
+	for !currentState.IsGameOver() {
+		moves := currentState.GetAllMoves(isMaxPlayer)
 		if len(moves) == 0 {
 			break
 		}
 		move := moves[rand.Intn(len(moves))]
-		(*currentState).Move(move)
+		currentState.Move(move)
 		isMaxPlayer = !isMaxPlayer
 	}
-	return e.evaluateGameState(*currentState)
+	return e.evaluateGameState(currentState)
 }
 
 func (e *Evaluator) backpropagate(node *Node, result float64) {

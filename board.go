@@ -32,7 +32,7 @@ type Board interface {
 	// 返回值:
 	//   - uint64: 棋盘状态的哈希值。
 	Hash() uint64
-	Clone() *Board
+	Clone() Board
 }
 
 // Move 是一个表示棋盘上一步棋动作的接口。
