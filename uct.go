@@ -30,7 +30,7 @@ type Node struct {
 // 返回值：
 // - float64: 表示当前棋盘状态的评估值。
 // - []Move: 表示最佳移动序列。
-func (e *Evaluator) UCT(opts *EvalOptions) (float64, []Move) {
+func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 	root := &Node{State: e.Board, IsMaxPlayer: opts.IsMaxPlayer}
 
 	// 设置时间限制和迭代次数

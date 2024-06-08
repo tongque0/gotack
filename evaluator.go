@@ -44,10 +44,6 @@ type Evaluator struct {
 //
 // 注意：评估函数和 EvalOptions 应当正确配合，确保所有必要的配置都被设置。
 func NewEvaluator(treeType GameTreeType, opts *EvalOptions, evalFunc func(opts *EvalOptions) float64) *Evaluator {
-	if treeType != AlphaBeta && treeType != PVS {
-		fmt.Println("Unsupported game tree type.")
-		return nil
-	}
 	return &Evaluator{
 		TreeType:     treeType,
 		Depth:        opts.Depth,
@@ -89,7 +85,7 @@ func (e *Evaluator) GetBestMove() []Move {
 	case PVS:
 		value, bestMoves = e.pvs(e.EvalOptions.Depth, -math.MaxFloat64, math.MaxFloat64, e.EvalOptions.IsMaxPlayer, e.EvalOptions)
 	case UCT:
-		value, bestMoves = e.UCT(e.EvalOptions)
+		value, bestMoves = e.uct(e.EvalOptions)
 	default:
 		fmt.Println("Unsupported tree type")
 		return []Move{}
