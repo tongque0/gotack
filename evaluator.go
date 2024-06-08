@@ -10,6 +10,7 @@ type GameTreeType int
 const (
 	AlphaBeta GameTreeType = iota // 使用 Alpha-Beta  算法
 	PVS                           // 使用 PVS 剪枝算法
+	UCT
 	// 可以添加更多的算法类型
 )
 
@@ -87,6 +88,8 @@ func (e *Evaluator) GetBestMove() []Move {
 		value, bestMoves = e.alphaBeta(e.EvalOptions.Depth, -math.MaxFloat64, math.MaxFloat64, e.EvalOptions.IsMaxPlayer, e.EvalOptions)
 	case PVS:
 		value, bestMoves = e.pvs(e.EvalOptions.Depth, -math.MaxFloat64, math.MaxFloat64, e.EvalOptions.IsMaxPlayer, e.EvalOptions)
+	case UCT:
+		value, bestMoves = e.UCT(e.EvalOptions)
 	default:
 		fmt.Println("Unsupported tree type")
 		return []Move{}
