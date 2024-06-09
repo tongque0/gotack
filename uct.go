@@ -56,7 +56,7 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 			simulationThreshold = 0 // 如果类型转换失败，则不采用该策略
 		}
 	} else {
-		simulationThreshold = 0 // 不采用该策略
+		simulationThreshold = 1 // 不采用该策略
 	}
 
 	var initialExpand int
@@ -118,12 +118,15 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 			maxVisits = child.Visits
 		}
 	}
-	fmt.Print("Best move: ", bestMove.Move, " Visits: ", bestMove.Visits, " TotalReward: ", bestMove.TotalReward, "\n")
 	// 提取最佳移动序列
 	if bestMove != nil {
 		return bestMove.TotalReward / float64(bestMove.Visits), e.extractMoves(root, bestMove)
 	}
-
+	if bestMove != nil {
+		opts.Extra["Visits"] = bestMove.Visits
+	} else {
+		opts.Extra["Visits"] = 0 // 如果没有最佳移动，可能设置为0或其他默认值
+	}
 	// 如果没有找到最佳移动，返回默认值
 	return 0.0, nil
 }
