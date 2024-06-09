@@ -1,7 +1,6 @@
 package gotack
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
 	"sort"
@@ -102,7 +101,6 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 			e.backpropagate(node, result)
 			node.SimulationCount++
 			if simulationThreshold > 0 && node.SimulationCount >= simulationThreshold {
-				fmt.Print("Expanding node...")
 				e.expandNode(node, initialExpand, expandStep, topN)
 				node.SimulationCount = 0
 			}
@@ -120,12 +118,8 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 	}
 	// 提取最佳移动序列
 	if bestMove != nil {
+		e.EvalOptions.Extra["Visits"] = bestMove.Visits
 		return bestMove.TotalReward / float64(bestMove.Visits), e.extractMoves(root, bestMove)
-	}
-	if bestMove != nil {
-		opts.Extra["Visits"] = bestMove.Visits
-	} else {
-		opts.Extra["Visits"] = 0 // 如果没有最佳移动，可能设置为0或其他默认值
 	}
 	// 如果没有找到最佳移动，返回默认值
 	return 0.0, nil
