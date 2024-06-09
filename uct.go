@@ -1,6 +1,7 @@
 package gotack
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"sort"
@@ -101,6 +102,7 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 			e.backpropagate(node, result)
 			node.SimulationCount++
 			if simulationThreshold > 0 && node.SimulationCount >= simulationThreshold {
+				fmt.Print("Expanding node...")
 				e.expandNode(node, initialExpand, expandStep, topN)
 				node.SimulationCount = 0
 			}
@@ -116,7 +118,7 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 			maxVisits = child.Visits
 		}
 	}
-
+	fmt.Print("Best move: ", bestMove.Move, " Visits: ", bestMove.Visits, " TotalReward: ", bestMove.TotalReward, "\n")
 	// 提取最佳移动序列
 	if bestMove != nil {
 		return bestMove.TotalReward / float64(bestMove.Visits), e.extractMoves(root, bestMove)
