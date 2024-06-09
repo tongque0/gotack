@@ -88,6 +88,15 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 		topN = 250 // 默认最大扩展250个位置
 	}
 
+	var aheadStep int
+	if val, ok := opts.Extra["AheadStep"]; ok {
+		aheadStep, ok = val.(int)
+		if !ok {
+			aheadStep = 0 // 默认提前1步
+		}
+	} else {
+		aheadStep = 0
+	}
 	// 开始 MCTS 迭代
 	for i := 0; i < iterations; i++ {
 		// 检查是否超出时间限制
@@ -97,7 +106,7 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 
 		node := e.selectNode(root)
 		if !node.State.IsGameOver() {
-			result := e.simulate(node)
+			result := e.simulate(node, aheadStep)
 			e.backpropagate(node, result)
 			node.SimulationCount++
 			if simulationThreshold > 0 && node.SimulationCount >= simulationThreshold {
@@ -228,18 +237,33 @@ func (e *Evaluator) expandNode(node *Node, initialExpand int, expandStep int, to
 	node.ExpandedCount = end
 }
 
-func (e *Evaluator) simulate(node *Node) float64 {
+func (e *Evaluator) simulate(node *Node, aheadStep int) float64 {
 	currentState := node.State.Clone()
 	isMaxPlayer := node.IsMaxPlayer
-	for !currentState.IsGameOver() {
+
+	// 如果 aheadStep 为 0，则直接评估当前状态
+	if aheadStep == 0 {
+		return e.evaluateGameState(currentState)
+	}
+
+	steps := 0 // 计数器，用于控制模拟步数
+
+	for steps < aheadStep && !currentState.IsGameOver() {
 		moves := currentState.GetAllMoves(isMaxPlayer)
 		if len(moves) == 0 {
 			break
 		}
-		move := moves[rand.Intn(len(moves))]
-		currentState.Move(move)
-		isMaxPlayer = !isMaxPlayer
+		// 随机选择一个移动和障碍放置
+		moveIndex := rand.Intn(len(moves))
+		currentState.Move(moves[moveIndex])
+		isMaxPlayer = !isMaxPlayer // 切换玩家
+
+		// 这里可以加入障碍放置的代码，具体取决于游戏规则和可用接口
+
+		steps++ // 每完成一个完整的移动和放障碍，步数加1
 	}
+
+	// 在模拟结束或达到指定的步数后评估状态
 	return e.evaluateGameState(currentState)
 }
 

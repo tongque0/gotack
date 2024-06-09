@@ -103,7 +103,7 @@ func (e *Evaluator) GetBestMove() []Move {
 		fmt.Println("+-----------------+----------------------------------+")
 		fmt.Printf("| %-15s | %-32v |\n", "IsDetail", e.EvalOptions.IsDetail)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32f |\n", "Best Eval Value", value)
+		fmt.Printf("| %-15s | %-32f |\n", "Values", value)
 		fmt.Println("+-----------------+----------------------------------+")
 		fmt.Print("| Best Moves     | ")
 
