@@ -5,7 +5,7 @@ import "math"
 func (e *Evaluator) pvs(depth int, alpha, beta float64, isMaximizingPlayer bool, opts *EvalOptions) (float64, []Move) {
 	if depth == 0 || e.Board.IsGameOver() {
 		opts.Extra["depth"] = e.Depth - depth
-		return e.EvaluateFunc(opts), nil
+		return e.Board.EvaluateFunc(*opts), nil
 	}
 
 	var bestMoves []Move

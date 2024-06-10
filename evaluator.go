@@ -15,12 +15,11 @@ const (
 )
 
 type Evaluator struct {
-	TreeType     GameTreeType
-	EvaluateFunc func(opts *EvalOptions) float64
-	EvalOptions  *EvalOptions
-	Board        Board
-	Depth        int
-	BestMoves    []Move
+	TreeType    GameTreeType
+	EvalOptions *EvalOptions
+	Board       Board
+	Depth       int
+	BestMoves   []Move
 }
 
 // NewEvaluator 创建并初始化一个 Evaluator 对象。
@@ -43,13 +42,12 @@ type Evaluator struct {
 //	evaluator := NewEvaluator(AlphaBeta, opts, evalFunc)
 //
 // 注意：评估函数和 EvalOptions 应当正确配合，确保所有必要的配置都被设置。
-func NewEvaluator(treeType GameTreeType, opts *EvalOptions, evalFunc func(opts *EvalOptions) float64) *Evaluator {
+func NewEvaluator(treeType GameTreeType, opts *EvalOptions) *Evaluator {
 	return &Evaluator{
-		TreeType:     treeType,
-		Depth:        opts.Depth,
-		Board:        opts.Board,
-		EvaluateFunc: evalFunc,
-		EvalOptions:  opts,
+		TreeType:    treeType,
+		Depth:       opts.Depth,
+		Board:       opts.Board,
+		EvalOptions: opts,
 	}
 }
 
@@ -93,17 +91,17 @@ func (e *Evaluator) GetBestMove() []Move {
 	if e.EvalOptions.IsDetail {
 		// 使用基本的 ASCII 字符格式化输出详细信息
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32v |\n", "Algorithm", e.TreeType)
+		fmt.Printf("| %-15s | %-32v |\n", "Algorithm:", e.TreeType)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32d |\n", "Depth", e.EvalOptions.Depth)
+		fmt.Printf("| %-15s | %-32d |\n", "Depth:", e.EvalOptions.Depth)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32d |\n", "Step", e.EvalOptions.Step)
+		fmt.Printf("| %-15s | %-32d |\n", "Step:", e.EvalOptions.Step)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32v |\n", "IsMaxPlayer", e.EvalOptions.IsMaxPlayer)
+		fmt.Printf("| %-15s | %-32v |\n", "Player:", e.EvalOptions.IsMaxPlayer)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32v |\n", "IsDetail", e.EvalOptions.IsDetail)
+		fmt.Printf("| %-15s | %-32v |\n", "IsDetail:", e.EvalOptions.IsDetail)
 		fmt.Println("+-----------------+----------------------------------+")
-		fmt.Printf("| %-15s | %-32f |\n", "Values", value)
+		fmt.Printf("| %-15s | %-32f |\n", "Values:", value)
 		fmt.Println("+-----------------+----------------------------------+")
 		fmt.Print("| Best Moves     | ")
 
