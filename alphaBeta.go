@@ -1,94 +1,58 @@
 package gotack
 
-import (
-	"math"
-	"sync"
-)
+import "math"
 
 func (e *Evaluator) alphaBeta(depth int, alpha, beta float64, isMaximizingPlayer bool, opts *EvalOptions) (float64, []Move) {
 	if depth == 0 || e.Board.IsGameOver() {
 		opts.Extra["depth"] = e.Depth - depth
 		return e.Board.EvaluateFunc(*opts), nil
 	}
-	threadNum := opts.GetExtraOption("ThreadNum", 1)
 
-	return e.parallelSearch(depth, alpha, beta, isMaximizingPlayer, opts, threadNum)
-}
-
-func (e *Evaluator) parallelSearch(depth int, alpha, beta float64, isMaximizingPlayer bool, opts *EvalOptions, threadNum int) (float64, []Move) {
 	var bestMoves []Move
-	var bestValue float64
+	var eval float64
 	if isMaximizingPlayer {
-		bestValue = math.Inf(-1)
-	} else {
-		bestValue = math.Inf(1)
-	}
-
-	moves := e.Board.GetAllMoves(isMaximizingPlayer)
-	results := make(chan struct {
-		eval float64
-		move Move
-	}, len(moves))
-
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-
-	for _, move := range moves {
-		wg.Add(1)
-		go func(move Move) {
-			defer wg.Done()
+		maxEval := math.Inf(-1)
+		for _, move := range e.Board.GetAllMoves(isMaximizingPlayer) {
 			e.Board.Move(move)
-			eval, _ := e.alphaBeta(depth-1, alpha, beta, !isMaximizingPlayer, opts)
+			eval, _ = e.alphaBeta(depth-1, alpha, beta, false, opts)
 			e.Board.UndoMove(move)
-			results <- struct {
-				eval float64
-				move Move
-			}{eval, move}
-		}(move)
 
-		if len(results) == threadNum {
-			res := <-results
-			e.processResult(res, &bestValue, &bestMoves, &alpha, &beta, isMaximizingPlayer, &mu)
+			if eval > maxEval {
+				maxEval = eval
+				bestMoves = []Move{move}
+			} else if eval == maxEval {
+				bestMoves = append(bestMoves, move)
+			}
+			alpha = math.Max(alpha, eval)
+			if beta <= alpha {
+				break
+			}
 		}
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for res := range results {
-		e.processResult(res, &bestValue, &bestMoves, &alpha, &beta, isMaximizingPlayer, &mu)
-	}
-
-	if depth == e.Depth {
-		e.BestMoves = bestMoves
-	}
-
-	return bestValue, bestMoves
-}
-
-func (e *Evaluator) processResult(res struct {
-	eval float64
-	move Move
-}, bestValue *float64, bestMoves *[]Move, alpha, beta *float64, isMaximizingPlayer bool, mu *sync.Mutex) {
-	mu.Lock()
-	defer mu.Unlock()
-	if isMaximizingPlayer && res.eval > *bestValue || !isMaximizingPlayer && res.eval < *bestValue {
-		*bestValue = res.eval
-		*bestMoves = []Move{res.move}
-	} else if res.eval == *bestValue {
-		*bestMoves = append(*bestMoves, res.move)
-	}
-	if isMaximizingPlayer {
-		*alpha = math.Max(*alpha, res.eval)
-		if *beta <= *alpha {
-			return
+		if depth == e.Depth {
+			e.BestMoves = bestMoves
 		}
+		return maxEval, bestMoves
 	} else {
-		*beta = math.Min(*beta, res.eval)
-		if *beta <= *alpha {
-			return
+		minEval := math.Inf(1)
+		for _, move := range e.Board.GetAllMoves(isMaximizingPlayer) {
+			e.Board.Move(move)
+			eval, _ = e.alphaBeta(depth-1, alpha, beta, true, opts)
+			e.Board.UndoMove(move)
+
+			if eval < minEval {
+				minEval = eval
+				bestMoves = []Move{move}
+			} else if eval == minEval {
+				bestMoves = append(bestMoves, move)
+			}
+			beta = math.Min(beta, eval)
+			if beta <= alpha {
+				break
+			}
 		}
+		if depth == e.Depth {
+			e.BestMoves = bestMoves // 只在顶层更新 BestMoves
+		}
+		return minEval, bestMoves
 	}
 }
