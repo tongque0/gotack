@@ -20,20 +20,10 @@ type Node struct {
 	ExpandedCount   int // 已扩展的节点数
 }
 
-// UCT 使用蒙特卡洛树搜索算法（UCT）来评估当前棋盘状态，并返回最佳移动。
-// 该函数接收一个 EvalOptions 结构体，包含了评估器的配置选项，如搜索深度、时间限制等。
-// 自定义参数 Extra 可以用于传递额外的配置信息，例如模拟阈值、初始扩展等。
-// Extra["SimThresh"] 用于设置模拟阈值，当某个节点的模拟次数达到该阈值时，将扩展该节点。
-// Extra["IES"] 用于设置初始扩展的节点数。
-// Extra["ExpandStep"] 用于设置每次扩展的节点数。
-// Extra["TopN"] 用于设置每次扩展的最大节点数。
-// 返回值：
-// - float64: 表示当前棋盘状态的评估值。
-// - []Move: 表示最佳移动序列。
+// UCT uses Monte Carlo Tree Search algorithm to evaluate the current board state and return the best move.
 func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 	root := &Node{State: e.Board, IsMaxPlayer: opts.IsMaxPlayer}
 
-	// 设置时间限制和迭代次数
 	startTime := time.Now()
 	timeLimit := time.Duration(opts.TimeLimit) * time.Second
 	iterations := opts.Iterations
@@ -48,58 +38,14 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 		timeLimit = 10 * time.Second
 	}
 
-	var simulationThreshold int
-	if val, ok := opts.Extra["SimThresh"]; ok {
-		simulationThreshold, ok = val.(int)
-		if !ok {
-			simulationThreshold = 0 // 如果类型转换失败，则不采用该策略
-		}
-	} else {
-		simulationThreshold = 1 // 不采用该策略
-	}
+	// Configuration for expansion and simulation
+	simulationThreshold := getOptionInt(opts.Extra, "SimThresh", 1)
+	expandThreshold := getOptionInt(opts.Extra, "ExpandThresh", 1000)
+	expandStep := getOptionInt(opts.Extra, "ExpandStep", 5)
+	expandTopN := getOptionInt(opts.Extra, "ExpandTopN", 250)
+	aheadStep := getOptionInt(opts.Extra, "AheadStep", 0)
 
-	var initialExpand int
-	if val, ok := opts.Extra["IES"]; ok {
-		initialExpand, ok = val.(int)
-		if !ok {
-			initialExpand = 5 // 默认初始扩展5个位置
-		}
-	} else {
-		initialExpand = 5 // 默认初始扩展5个位置
-	}
-
-	var expandStep int
-	if val, ok := opts.Extra["ExpandStep"]; ok {
-		expandStep, ok = val.(int)
-		if !ok {
-			expandStep = 5 // 默认每次扩展5个位置
-		}
-	} else {
-		expandStep = 5 // 默认每次扩展5个位置
-	}
-
-	var topN int
-	if val, ok := opts.Extra["TopN"]; ok {
-		topN, ok = val.(int)
-		if !ok {
-			topN = 250 // 默认最大扩展250个位置
-		}
-	} else {
-		topN = 250 // 默认最大扩展250个位置
-	}
-
-	var aheadStep int
-	if val, ok := opts.Extra["AheadStep"]; ok {
-		aheadStep, ok = val.(int)
-		if !ok {
-			aheadStep = 0 // 默认提前1步
-		}
-	} else {
-		aheadStep = 0
-	}
-	// 开始 MCTS 迭代
 	for i := 0; i < iterations; i++ {
-		// 检查是否超出时间限制
 		if time.Since(startTime) >= timeLimit {
 			break
 		}
@@ -109,31 +55,31 @@ func (e *Evaluator) uct(opts *EvalOptions) (float64, []Move) {
 			result := e.simulate(node, aheadStep)
 			e.backpropagate(node, result)
 			node.SimulationCount++
-			if simulationThreshold > 0 && node.SimulationCount >= simulationThreshold {
-				e.expandNode(node, initialExpand, expandStep, topN)
+			if node.SimulationCount >= simulationThreshold {
+				e.expandNode(node, expandThreshold, expandStep, expandTopN)
 				node.SimulationCount = 0
 			}
 		}
 	}
 
-	// 选择最佳移动
-	var bestMove *Node
-	maxVisits := -1
-	for _, child := range root.Children {
-		if child.Visits > maxVisits {
-			bestMove = child
-			maxVisits = child.Visits
-		}
-	}
-	// 提取最佳移动序列
-	if bestMove != nil {
-		e.EvalOptions.Extra["Visits"] = bestMove.Visits
-		return bestMove.TotalReward / float64(bestMove.Visits), e.extractMoves(root, bestMove)
-	}
-	// 如果没有找到最佳移动，返回默认值
-	return 0.0, nil
+	return e.selectBestMove(root)
 }
 
+// getOptionInt 从配置映射中提取整数值，如果未找到或类型不匹配，则返回默认值。
+// options 是传递给函数的配置映射，key 是要检索的配置项，defaultValue 是找不到时的返回值。
+// 返回配置项的整数值或在未找到时返回默认值。
+func getOptionInt(options map[string]interface{}, key string, defaultValue int) int {
+	if val, ok := options[key]; ok {
+		if num, ok := val.(int); ok {
+			return num
+		}
+	}
+	return defaultValue
+}
+
+// UCTValue 计算并返回节点的UCT值，用于在树搜索中选择节点。
+// totalVisits 是到达当前节点路径上的所有访问总次数。
+// 返回节点的UCT评估值。
 func (n *Node) UCTValue(totalVisits int) float64 {
 	if n.Visits == 0 {
 		return math.Inf(1)
@@ -143,9 +89,12 @@ func (n *Node) UCTValue(totalVisits int) float64 {
 	return avgReward + exploration
 }
 
+// selectNode 根据UCT值递归选择最优子节点，直到达到叶节点。
+// node 是当前考察的节点。
+// 返回选中的叶节点。
 func (e *Evaluator) selectNode(node *Node) *Node {
 	for len(node.Children) > 0 {
-		bestUCT := -1.0
+		bestUCT := -math.MaxFloat64
 		var bestChild *Node
 		for _, child := range node.Children {
 			uctValue := child.UCTValue(node.Visits)
@@ -159,111 +108,94 @@ func (e *Evaluator) selectNode(node *Node) *Node {
 	return node
 }
 
-func (e *Evaluator) expandNode(node *Node, initialExpand int, expandStep int, topN int) {
-	// 如果还没有初始化未尝试过的动作，则初始化
+// expandNode 根据访问次数和扩展阈值动态地在树中扩展新的节点。
+// node 是当前需要扩展的节点，expandThreshold 是节点访问次数的阈值，
+// expandStep 是达到扩展阈值时应该扩展的节点数量，expandTopN 是节点可以扩展的最大子节点数。
+func (e *Evaluator) expandNode(node *Node, expandThreshold int, expandStep int, expandTopN int) {
+	// 首次初始化未尝试的移动列表
 	if len(node.UntriedMoves) == 0 {
 		allMoves := node.State.GetAllMoves(node.IsMaxPlayer)
+		evaluateAndSortMoves(allMoves, node, e.EvalOptions)
+		node.UntriedMoves = allMoves // 存储所有可尝试的移动
+	}
 
-		// 计算每个未尝试过的动作的估值
-		evaluateMove := func(move Move) float64 {
+	// 计算应该扩展的次数，即节点访问次数除以扩展阈值
+	numExpansionsNeeded := node.Visits / expandThreshold
+	// 计算当前已经扩展的次数
+	currentExpansionsDone := node.ExpandedCount / expandStep
+
+	if numExpansionsNeeded > currentExpansionsDone {
+		// 计算新的扩展目标，即上次扩展后额外增加的扩展数量
+		additionalExpansions := (numExpansionsNeeded - currentExpansionsDone) * expandStep
+		// 更新目标扩展计数
+		targetExpandCount := min(node.ExpandedCount+additionalExpansions, expandTopN)
+		// 执行扩展操作，直到达到目标扩展计数或未尝试移动用尽
+		for node.ExpandedCount < targetExpandCount && node.ExpandedCount < len(node.UntriedMoves) {
+			move := node.UntriedMoves[node.ExpandedCount]
 			newState := node.State.Clone()
 			newState.Move(move)
-			return e.evaluateGameState(newState)
-		}
-
-		moveEvaluations := make([]struct {
-			move  Move
-			value float64
-		}, len(allMoves))
-
-		for i, move := range allMoves {
-			moveEvaluations[i] = struct {
-				move  Move
-				value float64
-			}{
-				move:  move,
-				value: evaluateMove(move),
+			childNode := &Node{
+				State:       newState,
+				Parent:      node,
+				IsMaxPlayer: !node.IsMaxPlayer,
+				Move:        move,
 			}
-		}
-
-		// 按估值排序，根据玩家类型决定升序还是降序
-		if node.IsMaxPlayer {
-			// 最大化玩家，按从高到低排序
-			sort.Slice(moveEvaluations, func(i, j int) bool {
-				return moveEvaluations[i].value > moveEvaluations[j].value
-			})
-		} else {
-			// 最小化玩家，按从低到高排序
-			sort.Slice(moveEvaluations, func(i, j int) bool {
-				return moveEvaluations[i].value < moveEvaluations[j].value
-			})
-		}
-
-		// 只保留前 topN 个位置
-		if len(moveEvaluations) < topN {
-			topN = len(moveEvaluations)
-		}
-
-		node.UntriedMoves = make([]Move, topN)
-		for i := 0; i < topN; i++ {
-			node.UntriedMoves[i] = moveEvaluations[i].move
+			node.Children = append(node.Children, childNode)
+			node.ExpandedCount++
 		}
 	}
+}
+func evaluateAndSortMoves(moves []Move, node *Node, opts *EvalOptions) {
+	moveEvaluations := make([]struct {
+		move  Move
+		value float64
+	}, len(moves))
 
-	// 每次扩展 initialExpand 或 expandStep 个节点
-	expandCount := initialExpand
-	if node.ExpandedCount > 0 {
-		expandCount = expandStep
-	}
-
-	end := node.ExpandedCount + expandCount
-	if end > len(node.UntriedMoves) {
-		end = len(node.UntriedMoves)
-	}
-
-	for i := node.ExpandedCount; i < end; i++ {
-		move := node.UntriedMoves[i]
+	for i, move := range moves {
 		newState := node.State.Clone()
 		newState.Move(move)
-		childNode := &Node{
-			State:       newState,
-			Parent:      node,
-			IsMaxPlayer: !node.IsMaxPlayer,
-			Move:        move,
+		moveEvaluations[i] = struct {
+			move  Move
+			value float64
+		}{
+			move:  move,
+			value: node.State.EvaluateFunc(*opts),
 		}
-		node.Children = append(node.Children, childNode)
 	}
 
-	node.ExpandedCount = end
+	sort.Slice(moveEvaluations, func(i, j int) bool {
+		if node.IsMaxPlayer {
+			return moveEvaluations[i].value > moveEvaluations[j].value
+		}
+		return moveEvaluations[i].value < moveEvaluations[j].value
+	})
+
+	for i, eval := range moveEvaluations {
+		moves[i] = eval.move
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (e *Evaluator) simulate(node *Node, aheadStep int) float64 {
 	currentState := node.State.Clone()
 	isMaxPlayer := node.IsMaxPlayer
 
-	// 如果 aheadStep 为 0，则直接评估当前状态
-	if aheadStep == 0 {
-		return e.evaluateGameState(currentState)
-	}
-
-	steps := 0 // 计数器，用于控制模拟步数
-
-	for steps < aheadStep && !currentState.IsGameOver() {
+	for steps := 0; steps < aheadStep && !currentState.IsGameOver(); steps++ {
 		moves := currentState.GetAllMoves(isMaxPlayer)
 		if len(moves) == 0 {
 			break
 		}
-		// 随机选择一个移动和障碍放置
 		moveIndex := rand.Intn(len(moves))
 		currentState.Move(moves[moveIndex])
-		isMaxPlayer = !isMaxPlayer // 切换玩家
-
-		// 这里可以加入障碍放置的代码，具体取决于游戏规则和可用接口
-
-		steps++ // 每完成一个完整的移动和放障碍，步数加1
+		isMaxPlayer = !isMaxPlayer
 	}
 
-	// 在模拟结束或达到指定的步数后评估状态
 	return e.evaluateGameState(currentState)
 }
 
@@ -279,7 +211,7 @@ func (e *Evaluator) extractMoves(root, bestMove *Node) []Move {
 	var moves []Move
 	current := bestMove
 	for current != nil && current != root {
-		moves = append([]Move{current.Move}, moves...)
+		moves = append(moves, current.Move)
 		current = current.Parent
 	}
 	return moves
@@ -287,4 +219,19 @@ func (e *Evaluator) extractMoves(root, bestMove *Node) []Move {
 
 func (e *Evaluator) evaluateGameState(state Board) float64 {
 	return state.EvaluateFunc(*e.EvalOptions)
+}
+
+func (e *Evaluator) selectBestMove(root *Node) (float64, []Move) {
+	var bestMove *Node
+	maxVisits := -1
+	for _, child := range root.Children {
+		if child.Visits > maxVisits {
+			bestMove = child
+			maxVisits = child.Visits
+		}
+	}
+	if bestMove != nil {
+		return bestMove.TotalReward / float64(bestMove.Visits), e.extractMoves(root, bestMove)
+	}
+	return 0.0, nil
 }
