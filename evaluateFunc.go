@@ -54,6 +54,16 @@ func NewEvaluatorOptions(opts ...EvalOption) *EvalOptions {
 	return opt
 }
 
+// GetExtraOption 从 EvalOptions 的 Extra 映射中获取指定键的值。
+func (e *EvalOptions) GetExtraOption(key string, def int) int {
+	if v, ok := e.Extra[key]; ok {
+		if value, ok := v.(int); ok {
+			return value
+		}
+	}
+	return def
+}
+
 // WithBoard 配置 EvalOptions 的 Board 属性。
 func WithBoard(board Board) EvalOption {
 	return func(opts *EvalOptions) {
